@@ -26,7 +26,7 @@ const ChallanDetail: React.FC<Props> = ({ challanId, userRole, onBack, onRefresh
   const canManage = userRole === 'admin' || userRole === 'sales';
 
   useEffect(() => {
-    api.get(`/challans/${challanId}`).then(r => setChallan(r.data)).catch(() => setError('Failed to load'));
+    api.get(`/challans/${challanId}`).then(r => setChallan(r.data.data)).catch(() => setError('Failed to load'));
   }, [challanId]);
 
   const handleStatus = async (status: string) => {
@@ -35,7 +35,7 @@ const ChallanDetail: React.FC<Props> = ({ challanId, userRole, onBack, onRefresh
     try {
       await api.patch(`/challans/${challanId}/status`, { status });
       const res = await api.get(`/challans/${challanId}`);
-      setChallan(res.data);
+      setChallan(res.data.data);
       onRefresh();
     } catch (err: any) {
       setError(err.response?.data?.message || 'Failed to update status');

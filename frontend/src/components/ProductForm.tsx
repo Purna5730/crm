@@ -20,7 +20,7 @@ const ProductForm: React.FC<Props> = ({ productId, onSuccess, onCancel }) => {
   useEffect(() => {
     if (productId) {
       api.get(`/products/${productId}`).then(res => {
-        const p = res.data;
+        const p = res.data.data;
         setForm({
           name: p.name, sku: p.sku, category: p.category,
           unit_price: p.unit_price, current_stock: p.current_stock,
@@ -42,7 +42,7 @@ const ProductForm: React.FC<Props> = ({ productId, onSuccess, onCancel }) => {
       }
       onSuccess();
     } catch (err: any) {
-      setError(err.response?.data?.errors?.[0]?.msg || err.response?.data?.message || 'Failed to save');
+      setError(err.response?.data?.errors?.[0]?.message || err.response?.data?.message || 'Failed to save');
     } finally { setLoading(false); }
   };
 

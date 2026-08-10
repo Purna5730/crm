@@ -12,5 +12,5 @@ router.get('/:id', productController_1.getProduct);
 router.post('/', (0, role_1.requireRole)('admin', 'warehouse'), productController_1.productValidation, productController_1.createProduct);
 router.put('/:id', (0, role_1.requireRole)('admin', 'warehouse'), productController_1.productValidation, productController_1.updateProduct);
 router.delete('/:id', (0, role_1.requireRole)('admin'), productController_1.deleteProduct);
-router.post('/:id/stock', (0, role_1.requireRole)('admin', 'warehouse'), productController_1.addStockMovement);
+router.post('/:id/stock', (0, role_1.requireRole)('admin', 'warehouse'), productController_1.stockMovementValidation, productController_1.addStockMovement);
 exports.default = router;

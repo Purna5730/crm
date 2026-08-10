@@ -27,7 +27,7 @@ const Challans: React.FC<Props> = ({ userRole }) => {
   const fetchChallans = useCallback(async () => {
     try {
       const res = await api.get('/challans', { params: { search, status: statusFilter } });
-      setChallans(res.data);
+      setChallans(res.data.data);
     } catch { setError('Failed to load challans'); }
   }, [search, statusFilter]);
 

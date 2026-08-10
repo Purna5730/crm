@@ -18,8 +18,8 @@ const ChallanForm: React.FC<Props> = ({ onSuccess, onCancel }) => {
   const [customerSearch, setCustomerSearch] = useState('');
 
   useEffect(() => {
-    api.get('/customers').then(r => setCustomers(r.data));
-    api.get('/products').then(r => setProducts(r.data));
+    api.get('/customers').then(r => setCustomers(r.data.data));
+    api.get('/products').then(r => setProducts(r.data.data));
   }, []);
 
   const filteredCustomers = customers.filter(c =>

@@ -12,13 +12,12 @@ interface Props { userRole: string; }
 
 const canWrite = (role: string) => role === 'admin' || role === 'sales';
 const canDelete = (role: string) => role === 'admin';
-
-type View = 'list' | 'detail';
+const typeColors: Record<string, string> = { retail: 'type-retail', wholesale: 'type-wholesale', distributor: 'type-distributor' };
 
 const Customers: React.FC<Props> = ({ userRole }) => {
   const [customers, setCustomers] = useState<Customer[]>([]);
   const [search, setSearch] = useState('');
-  const [view, setView] = useState<View>('list');
+  const [view, setView] = useState<'list' | 'detail'>('list');
   const [selectedId, setSelectedId] = useState<number | null>(null);
   const [showForm, setShowForm] = useState(false);
   const [editId, setEditId] = useState<number | null>(null);
@@ -42,11 +41,6 @@ const Customers: React.FC<Props> = ({ userRole }) => {
   };
 
   const handleFormSuccess = () => { setShowForm(false); setEditId(null); fetchCustomers(); };
-  };
-
-  const handleFormSuccess = () => { setShowForm(false); setEditId(null); fetchCustomers(); };
-
-  const typeColors: Record<string, string> = { retail: 'type-retail', wholesale: 'type-wholesale', distributor: 'type-distributor' };
 
   if (view === 'detail' && selectedId) {
     return (
@@ -54,7 +48,7 @@ const Customers: React.FC<Props> = ({ userRole }) => {
         {showForm && (
           <CustomerForm
             customerId={editId}
-            onSuccess={() => { setShowForm(false); setEditId(null); }}
+            onSuccess={() => { setShowForm(false); setEditId(null); fetchCustomers(); }}
             onCancel={() => { setShowForm(false); setEditId(null); }}
           />
         )}
@@ -78,7 +72,6 @@ const Customers: React.FC<Props> = ({ userRole }) => {
         />
       )}
 
-      {/* Header */}
       <div className="customers-header">
         <h2>Customers <span className="count-badge">{customers.length}</span></h2>
         {canWrite(userRole) && (
@@ -88,32 +81,23 @@ const Customers: React.FC<Props> = ({ userRole }) => {
         )}
       </div>
 
-      {/* Search */}
       <div className="search-bar">
         <span className="search-icon">🔍</span>
         <input
           placeholder="Search by name, mobile, email or business..."
-          value={search}
-          onChange={e => setSearch(e.target.value)}
+          value={search} onChange={e => setSearch(e.target.value)}
         />
         {search && <button className="search-clear" onClick={() => setSearch('')}>✕</button>}
       </div>
 
       {error && <div className="error-msg">{error}</div>}
 
-      {/* Table */}
       <div className="table-wrapper">
         <table className="customers-table">
           <thead>
             <tr>
-              <th>#</th>
-              <th>Name</th>
-              <th>Mobile</th>
-              <th>Business</th>
-              <th>Type</th>
-              <th>Status</th>
-              <th>Follow-up</th>
-              <th>Actions</th>
+              <th>#</th><th>Name</th><th>Mobile</th><th>Business</th>
+              <th>Type</th><th>Status</th><th>Follow-up</th><th>Actions</th>
             </tr>
           </thead>
           <tbody>
