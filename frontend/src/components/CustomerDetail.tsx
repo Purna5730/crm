@@ -1,4 +1,4 @@
-import React, { useEffect, useState } from 'react';
+import React, { useEffect, useState, useCallback } from 'react';
 import api from '../api';
 
 interface Note { id: number; note: string; created_by: string; created_at: string; }
@@ -20,12 +20,12 @@ const CustomerDetail: React.FC<Props> = ({ customerId, userRole, onBack, onEdit 
   const canWrite = userRole === 'admin' || userRole === 'sales';
   const canDelete = userRole === 'admin';
 
-  const fetch = async () => {
+  const fetch = useCallback(async () => {
     const res = await api.get(`/customers/${customerId}`);
     setCustomer(res.data.data);
-  };
+  }, [customerId]);
 
-  useEffect(() => { fetch(); }, [customerId]);
+  useEffect(() => { fetch(); }, [fetch]);
 
   const handleAddNote = async (e: React.FormEvent) => {
     e.preventDefault(); setNoteError(''); setLoading(true);

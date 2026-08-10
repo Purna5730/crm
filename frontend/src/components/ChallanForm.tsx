@@ -1,4 +1,4 @@
-import React, { useState, useEffect, useCallback } from 'react';
+import React, { useState, useEffect } from 'react';
 import api from '../api';
 
 interface Customer { id: number; name: string; mobile: string; business_name: string; address: string; }
