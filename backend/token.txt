@@ -1,0 +1,1 @@
+{"token":"eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpZCI6NCwicm9sZSI6ImFkbWluIiwiaWF0IjoxNzg2MzYxOTg3LCJleHAiOjE3ODY0NDgzODd9.6dVcio3WIvjZAut2M8jfzo6v2gA5ZDHgJwAavkdYrzg","user":{"id":4,"name":"Test Admin","email":"testadmin@crm.com","role":"admin"}}
