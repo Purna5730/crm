@@ -1,4 +1,4 @@
-import React, { useEffect, useState, useCallback } from 'react';
+import React, { useCallback, useEffect, useState } from 'react';
 import api from '../api';
 
 interface Note { id: number; note: string; created_by: string; created_at: string; }
@@ -20,19 +20,21 @@ const CustomerDetail: React.FC<Props> = ({ customerId, userRole, onBack, onEdit 
   const canWrite = userRole === 'admin' || userRole === 'sales';
   const canDelete = userRole === 'admin';
 
-  const fetch = useCallback(async () => {
+  const loadCustomer = useCallback(async () => {
     const res = await api.get(`/customers/${customerId}`);
     setCustomer(res.data.data);
   }, [customerId]);
 
-  useEffect(() => { fetch(); }, [fetch]);
+  useEffect(() => {
+    loadCustomer();
+  }, [loadCustomer]);
 
   const handleAddNote = async (e: React.FormEvent) => {
     e.preventDefault(); setNoteError(''); setLoading(true);
     try {
       await api.post(`/customers/${customerId}/notes`, { note: newNote });
       setNewNote('');
-      fetch();
+      loadCustomer();
     } catch (err: any) {
       setNoteError(err.response?.data?.message || 'Failed to add note');
     } finally { setLoading(false); }
@@ -41,7 +43,7 @@ const CustomerDetail: React.FC<Props> = ({ customerId, userRole, onBack, onEdit 
   const handleDeleteNote = async (noteId: number) => {
     if (!window.confirm('Delete this note?')) return;
     await api.delete(`/customers/${customerId}/notes/${noteId}`);
-    fetch();
+    loadCustomer();
   };
 
   if (!customer) return <div className="loading">Loading...</div>;
