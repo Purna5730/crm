@@ -6,6 +6,13 @@ export interface AuthRequest extends Request {
   userRole?: string;
 }
 
+export const getUserId = (req: AuthRequest): number => {
+  if (req.userId === undefined || req.userId === null) {
+    throw new Error('Authenticated user ID is missing');
+  }
+  return req.userId;
+};
+
 export const authenticate = (req: AuthRequest, res: Response, next: NextFunction): void => {
   const token = req.headers.authorization?.split(' ')[1];
   if (!token) { res.status(401).json({ message: 'No token provided' }); return; }

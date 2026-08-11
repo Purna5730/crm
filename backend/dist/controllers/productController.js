@@ -6,12 +6,39 @@ Object.defineProperty(exports, "__esModule", { value: true });
 exports.addStockMovement = exports.deleteProduct = exports.updateProduct = exports.createProduct = exports.getProduct = exports.getStockMovements = exports.getProducts = exports.stockMovementValidation = exports.productValidation = void 0;
 const express_validator_1 = require("express-validator");
 const db_1 = __importDefault(require("../config/db"));
+const auth_1 = require("../middleware/auth");
 // ── helpers ──────────────────────────────────────────────
 const validationError = (res, errors) => res.status(422).json({ success: false, errors: errors.array().map((e) => ({ field: e.path, message: e.msg })) });
 const parsePage = (p, limit) => {
-    const page = Math.max(1, parseInt(p) || 1);
-    const size = Math.min(100, Math.max(1, parseInt(limit) || 20));
+    const pageValue = typeof p === 'string'
+        ? p
+        : Array.isArray(p) && typeof p[0] === 'string'
+            ? p[0]
+            : '';
+    const limitValue = typeof limit === 'string'
+        ? limit
+        : Array.isArray(limit) && typeof limit[0] === 'string'
+            ? limit[0]
+            : '';
+    const page = Math.max(1, parseInt(pageValue, 10) || 1);
+    const size = Math.min(100, Math.max(1, parseInt(limitValue, 10) || 20));
     return { page, size, offset: (page - 1) * size };
+};
+const getQueryString = (value) => {
+    if (typeof value === 'string')
+        return value;
+    if (Array.isArray(value) && typeof value[0] === 'string') {
+        return value[0];
+    }
+    return '';
+};
+const getParamString = (value) => {
+    if (typeof value === 'string')
+        return value;
+    if (Array.isArray(value) && typeof value[0] === 'string') {
+        return value[0];
+    }
+    return '';
 };
 // ── validation rules ─────────────────────────────────────
 exports.productValidation = [
@@ -32,9 +59,9 @@ exports.stockMovementValidation = [
 const getProducts = async (req, res) => {
     try {
         const { page, size, offset } = parsePage(req.query.page, req.query.limit);
-        const search = (req.query.search || '').trim();
-        const category = (req.query.category || '').trim();
-        const lowStock = req.query.low_stock === 'true';
+        const search = getQueryString(req.query.search).trim();
+        const category = getQueryString(req.query.category).trim();
+        const lowStock = getQueryString(req.query.low_stock) === 'true';
         const conditions = [];
         const params = [];
         if (search) {
@@ -66,8 +93,8 @@ exports.getProducts = getProducts;
 const getStockMovements = async (req, res) => {
     try {
         const { page, size, offset } = parsePage(req.query.page, req.query.limit);
-        const productId = req.query.product_id;
-        const type = req.query.type;
+        const productId = getQueryString(req.query.product_id);
+        const type = getQueryString(req.query.type);
         const conditions = [];
         const params = [];
         if (productId) {
@@ -96,7 +123,7 @@ const getStockMovements = async (req, res) => {
 exports.getStockMovements = getStockMovements;
 // ── GET /products/:id ─────────────────────────────────────
 const getProduct = async (req, res) => {
-    const id = parseInt(req.params.id);
+    const id = parseInt(getParamString(req.params.id));
     if (isNaN(id)) {
         res.status(400).json({ success: false, message: 'Invalid product ID' });
         return;
@@ -137,7 +164,8 @@ const createProduct = async (req, res) => {
         const [result] = await conn.execute(`INSERT INTO products (name, sku, category, unit_price, current_stock, min_stock_alert, location) VALUES (?,?,?,?,?,?,?)`, [name, sku.toUpperCase(), category, unit_price, current_stock, min_stock_alert, location || null]);
         const productId = result.insertId;
         if (Number(current_stock) > 0) {
-            const [user] = await conn.query('SELECT name FROM users WHERE id = ?', [req.userId]);
+            const userId = (0, auth_1.getUserId)(req);
+            const [user] = await conn.query('SELECT name FROM users WHERE id = ?', [userId]);
             await conn.execute(`INSERT INTO stock_movements (product_id, quantity, movement_type, reason, created_by) VALUES (?,?,?,?,?)`, [productId, current_stock, 'IN', 'Initial stock', user[0]?.name || 'System']);
         }
         await conn.commit();
@@ -154,7 +182,7 @@ const createProduct = async (req, res) => {
 exports.createProduct = createProduct;
 // ── PUT /products/:id ─────────────────────────────────────
 const updateProduct = async (req, res) => {
-    const id = parseInt(req.params.id);
+    const id = parseInt(getParamString(req.params.id));
     if (isNaN(id)) {
         res.status(400).json({ success: false, message: 'Invalid product ID' });
         return;
@@ -180,7 +208,7 @@ const updateProduct = async (req, res) => {
 exports.updateProduct = updateProduct;
 // ── DELETE /products/:id ──────────────────────────────────
 const deleteProduct = async (req, res) => {
-    const id = parseInt(req.params.id);
+    const id = parseInt(getParamString(req.params.id));
     if (isNaN(id)) {
         res.status(400).json({ success: false, message: 'Invalid product ID' });
         return;
@@ -200,7 +228,7 @@ const deleteProduct = async (req, res) => {
 exports.deleteProduct = deleteProduct;
 // ── POST /products/:id/stock ──────────────────────────────
 const addStockMovement = async (req, res) => {
-    const id = parseInt(req.params.id);
+    const id = parseInt(getParamString(req.params.id));
     if (isNaN(id)) {
         res.status(400).json({ success: false, message: 'Invalid product ID' });
         return;
@@ -233,7 +261,8 @@ const addStockMovement = async (req, res) => {
             ? current_stock + Number(quantity)
             : current_stock - Number(quantity);
         await conn.execute('UPDATE products SET current_stock = ? WHERE id = ?', [newStock, id]);
-        const [user] = await conn.query('SELECT name FROM users WHERE id = ?', [req.userId]);
+        const userId = (0, auth_1.getUserId)(req);
+        const [user] = await conn.query('SELECT name FROM users WHERE id = ?', [userId]);
         await conn.execute(`INSERT INTO stock_movements (product_id, quantity, movement_type, reason, created_by) VALUES (?,?,?,?,?)`, [id, quantity, movement_type, reason?.trim() || null, user[0]?.name || 'Unknown']);
         await conn.commit();
         res.status(200).json({ success: true, message: 'Stock updated', data: { previous_stock: current_stock, new_stock: newStock, movement_type, quantity } });

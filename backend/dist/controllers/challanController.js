@@ -5,11 +5,38 @@ var __importDefault = (this && this.__importDefault) || function (mod) {
 Object.defineProperty(exports, "__esModule", { value: true });
 exports.updateChallanStatus = exports.createChallan = exports.getChallan = exports.getChallans = void 0;
 const db_1 = __importDefault(require("../config/db"));
+const auth_1 = require("../middleware/auth");
 // ── helpers ──────────────────────────────────────────────
 const parsePage = (p, limit) => {
-    const page = Math.max(1, parseInt(p) || 1);
-    const size = Math.min(100, Math.max(1, parseInt(limit) || 20));
+    const pageValue = typeof p === 'string'
+        ? p
+        : Array.isArray(p) && typeof p[0] === 'string'
+            ? p[0]
+            : '';
+    const limitValue = typeof limit === 'string'
+        ? limit
+        : Array.isArray(limit) && typeof limit[0] === 'string'
+            ? limit[0]
+            : '';
+    const page = Math.max(1, parseInt(pageValue, 10) || 1);
+    const size = Math.min(100, Math.max(1, parseInt(limitValue, 10) || 20));
     return { page, size, offset: (page - 1) * size };
+};
+const getQueryString = (value) => {
+    if (typeof value === 'string')
+        return value;
+    if (Array.isArray(value) && typeof value[0] === 'string') {
+        return value[0];
+    }
+    return '';
+};
+const getParamString = (value) => {
+    if (typeof value === 'string')
+        return value;
+    if (Array.isArray(value) && typeof value[0] === 'string') {
+        return value[0];
+    }
+    return '';
 };
 const generateChallanNumber = async (conn) => {
     const d = new Date();
@@ -22,8 +49,8 @@ const generateChallanNumber = async (conn) => {
 const getChallans = async (req, res) => {
     try {
         const { page, size, offset } = parsePage(req.query.page, req.query.limit);
-        const search = (req.query.search || '').trim();
-        const status = (req.query.status || '').trim();
+        const search = getQueryString(req.query.search).trim();
+        const status = getQueryString(req.query.status).trim();
         const conditions = [];
         const params = [];
         if (search) {
@@ -52,7 +79,7 @@ const getChallans = async (req, res) => {
 exports.getChallans = getChallans;
 // ── GET /challans/:id ─────────────────────────────────────
 const getChallan = async (req, res) => {
-    const id = parseInt(req.params.id);
+    const id = parseInt(getParamString(req.params.id));
     if (isNaN(id)) {
         res.status(400).json({ success: false, message: 'Invalid challan ID' });
         return;
@@ -115,7 +142,8 @@ const createChallan = async (req, res) => {
             return;
         }
         const customer = customers[0];
-        const [users] = await conn.query('SELECT name FROM users WHERE id = ?', [req.userId]);
+        const userId = (0, auth_1.getUserId)(req);
+        const [users] = await conn.query('SELECT name FROM users WHERE id = ?', [userId]);
         const createdBy = users[0]?.name || 'Unknown';
         // Resolve products + stock check
         let totalQty = 0, totalAmount = 0;
@@ -175,7 +203,7 @@ const createChallan = async (req, res) => {
 exports.createChallan = createChallan;
 // ── PATCH /challans/:id/status ────────────────────────────
 const updateChallanStatus = async (req, res) => {
-    const id = parseInt(req.params.id);
+    const id = parseInt(getParamString(req.params.id));
     if (isNaN(id)) {
         res.status(400).json({ success: false, message: 'Invalid challan ID' });
         return;
@@ -205,7 +233,8 @@ const updateChallanStatus = async (req, res) => {
             await conn.rollback();
             return;
         }
-        const [users] = await conn.query('SELECT name FROM users WHERE id = ?', [req.userId]);
+        const userId = (0, auth_1.getUserId)(req);
+        const [users] = await conn.query('SELECT name FROM users WHERE id = ?', [userId]);
         const updatedBy = users[0]?.name || 'Unknown';
         const [items] = await conn.query('SELECT * FROM challan_items WHERE challan_id = ?', [id]);
         // draft → confirmed: deduct stock

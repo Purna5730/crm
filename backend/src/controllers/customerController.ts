@@ -1,20 +1,48 @@
 import { Response } from 'express';
 import { body, query, validationResult } from 'express-validator';
 import pool from '../config/db';
-import { AuthRequest } from '../middleware/auth';
+import { AuthRequest, getUserId } from '../middleware/auth';
 
 // ── helpers ──────────────────────────────────────────────
 const validationError = (res: Response, errors: any) =>
   res.status(422).json({ success: false, errors: errors.array().map((e: any) => ({ field: e.path, message: e.msg })) });
 
-const parsePage = (p: string | string[] | undefined, limit: string | string[] | undefined) => {
-  const page = Math.max(1, parseInt(Array.isArray(p) ? p[0] : p) || 1);
-  const size = Math.min(100, Math.max(1, parseInt(Array.isArray(limit) ? limit[0] : limit) || 20));
+const parsePage = (p: unknown, limit: unknown) => {
+  const pageValue =
+    typeof p === 'string'
+      ? p
+      : Array.isArray(p) && typeof p[0] === 'string'
+        ? p[0]
+        : '';
+
+  const limitValue =
+    typeof limit === 'string'
+      ? limit
+      : Array.isArray(limit) && typeof limit[0] === 'string'
+        ? limit[0]
+        : '';
+
+  const page = Math.max(1, parseInt(pageValue, 10) || 1);
+  const size = Math.min(100, Math.max(1, parseInt(limitValue, 10) || 20));
+
   return { page, size, offset: (page - 1) * size };
 };
 
-const getQueryString = (value: string | string[] | undefined): string =>
-  Array.isArray(value) ? value[0] : value || '';
+const getQueryString = (value: unknown): string => {
+  if (typeof value === 'string') return value;
+  if (Array.isArray(value) && typeof value[0] === 'string') {
+    return value[0];
+  }
+  return '';
+};
+
+const getParamString = (value: unknown): string => {
+  if (typeof value === 'string') return value;
+  if (Array.isArray(value) && typeof value[0] === 'string') {
+    return value[0];
+  }
+  return '';
+};
 
 // ── validation rules ─────────────────────────────────────
 export const customerValidation = [
@@ -71,7 +99,7 @@ export const getCustomers = async (req: AuthRequest, res: Response): Promise<voi
 
 // ── GET /customers/:id ────────────────────────────────────
 export const getCustomer = async (req: AuthRequest, res: Response): Promise<void> => {
-  const id = parseInt(req.params.id);
+  const id = parseInt(getParamString(req.params.id));
   if (isNaN(id)) { res.status(400).json({ success: false, message: 'Invalid customer ID' }); return; }
   try {
     const [rows]: any = await pool.query('SELECT * FROM customers WHERE id = ?', [id]);
@@ -109,7 +137,7 @@ export const createCustomer = async (req: AuthRequest, res: Response): Promise<v
 
 // ── PUT /customers/:id ────────────────────────────────────
 export const updateCustomer = async (req: AuthRequest, res: Response): Promise<void> => {
-  const id = parseInt(req.params.id);
+  const id = parseInt(getParamString(req.params.id));
   if (isNaN(id)) { res.status(400).json({ success: false, message: 'Invalid customer ID' }); return; }
 
   const errors = validationResult(req);
@@ -134,7 +162,7 @@ export const updateCustomer = async (req: AuthRequest, res: Response): Promise<v
 
 // ── DELETE /customers/:id ─────────────────────────────────
 export const deleteCustomer = async (req: AuthRequest, res: Response): Promise<void> => {
-  const id = parseInt(req.params.id);
+  const id = parseInt(getParamString(req.params.id));
   if (isNaN(id)) { res.status(400).json({ success: false, message: 'Invalid customer ID' }); return; }
   try {
     const [result]: any = await pool.execute('DELETE FROM customers WHERE id = ?', [id]);
@@ -147,7 +175,7 @@ export const deleteCustomer = async (req: AuthRequest, res: Response): Promise<v
 
 // ── POST /customers/:id/notes ─────────────────────────────
 export const addFollowUpNote = async (req: AuthRequest, res: Response): Promise<void> => {
-  const id = parseInt(req.params.id);
+  const id = parseInt(getParamString(req.params.id));
   if (isNaN(id)) { res.status(400).json({ success: false, message: 'Invalid customer ID' }); return; }
 
   const note = req.body.note?.trim();
@@ -157,7 +185,8 @@ export const addFollowUpNote = async (req: AuthRequest, res: Response): Promise<
     const [customer]: any = await pool.query('SELECT id FROM customers WHERE id = ?', [id]);
     if (customer.length === 0) { res.status(404).json({ success: false, message: 'Customer not found' }); return; }
 
-    const [user]: any = await pool.query('SELECT name FROM users WHERE id = ?', [req.userId]);
+    const userId = getUserId(req);
+    const [user]: any = await pool.query('SELECT name FROM users WHERE id = ?', [userId]);
     const [result]: any = await pool.execute(
       'INSERT INTO follow_up_notes (customer_id, note, created_by) VALUES (?, ?, ?)',
       [id, note, user[0]?.name || 'Unknown']
@@ -170,8 +199,8 @@ export const addFollowUpNote = async (req: AuthRequest, res: Response): Promise<
 
 // ── DELETE /customers/:id/notes/:noteId ───────────────────
 export const deleteFollowUpNote = async (req: AuthRequest, res: Response): Promise<void> => {
-  const id     = parseInt(req.params.id);
-  const noteId = parseInt(req.params.noteId);
+  const id     = parseInt(getParamString(req.params.id));
+  const noteId = parseInt(getParamString(req.params.noteId));
   if (isNaN(id) || isNaN(noteId)) { res.status(400).json({ success: false, message: 'Invalid ID' }); return; }
   try {
     const [result]: any = await pool.execute(

@@ -6,12 +6,39 @@ Object.defineProperty(exports, "__esModule", { value: true });
 exports.deleteFollowUpNote = exports.addFollowUpNote = exports.deleteCustomer = exports.updateCustomer = exports.createCustomer = exports.getCustomer = exports.getCustomers = exports.customerValidation = void 0;
 const express_validator_1 = require("express-validator");
 const db_1 = __importDefault(require("../config/db"));
+const auth_1 = require("../middleware/auth");
 // ── helpers ──────────────────────────────────────────────
 const validationError = (res, errors) => res.status(422).json({ success: false, errors: errors.array().map((e) => ({ field: e.path, message: e.msg })) });
 const parsePage = (p, limit) => {
-    const page = Math.max(1, parseInt(p) || 1);
-    const size = Math.min(100, Math.max(1, parseInt(limit) || 20));
+    const pageValue = typeof p === 'string'
+        ? p
+        : Array.isArray(p) && typeof p[0] === 'string'
+            ? p[0]
+            : '';
+    const limitValue = typeof limit === 'string'
+        ? limit
+        : Array.isArray(limit) && typeof limit[0] === 'string'
+            ? limit[0]
+            : '';
+    const page = Math.max(1, parseInt(pageValue, 10) || 1);
+    const size = Math.min(100, Math.max(1, parseInt(limitValue, 10) || 20));
     return { page, size, offset: (page - 1) * size };
+};
+const getQueryString = (value) => {
+    if (typeof value === 'string')
+        return value;
+    if (Array.isArray(value) && typeof value[0] === 'string') {
+        return value[0];
+    }
+    return '';
+};
+const getParamString = (value) => {
+    if (typeof value === 'string')
+        return value;
+    if (Array.isArray(value) && typeof value[0] === 'string') {
+        return value[0];
+    }
+    return '';
 };
 // ── validation rules ─────────────────────────────────────
 exports.customerValidation = [
@@ -32,9 +59,9 @@ exports.customerValidation = [
 const getCustomers = async (req, res) => {
     try {
         const { page, size, offset } = parsePage(req.query.page, req.query.limit);
-        const search = (req.query.search || '').trim();
-        const status = (req.query.status || '').trim();
-        const type = (req.query.type || '').trim();
+        const search = getQueryString(req.query.search).trim();
+        const status = getQueryString(req.query.status).trim();
+        const type = getQueryString(req.query.type).trim();
         const conditions = [];
         const params = [];
         if (search) {
@@ -66,7 +93,7 @@ const getCustomers = async (req, res) => {
 exports.getCustomers = getCustomers;
 // ── GET /customers/:id ────────────────────────────────────
 const getCustomer = async (req, res) => {
-    const id = parseInt(req.params.id);
+    const id = parseInt(getParamString(req.params.id));
     if (isNaN(id)) {
         res.status(400).json({ success: false, message: 'Invalid customer ID' });
         return;
@@ -110,7 +137,7 @@ const createCustomer = async (req, res) => {
 exports.createCustomer = createCustomer;
 // ── PUT /customers/:id ────────────────────────────────────
 const updateCustomer = async (req, res) => {
-    const id = parseInt(req.params.id);
+    const id = parseInt(getParamString(req.params.id));
     if (isNaN(id)) {
         res.status(400).json({ success: false, message: 'Invalid customer ID' });
         return;
@@ -141,7 +168,7 @@ const updateCustomer = async (req, res) => {
 exports.updateCustomer = updateCustomer;
 // ── DELETE /customers/:id ─────────────────────────────────
 const deleteCustomer = async (req, res) => {
-    const id = parseInt(req.params.id);
+    const id = parseInt(getParamString(req.params.id));
     if (isNaN(id)) {
         res.status(400).json({ success: false, message: 'Invalid customer ID' });
         return;
@@ -161,7 +188,7 @@ const deleteCustomer = async (req, res) => {
 exports.deleteCustomer = deleteCustomer;
 // ── POST /customers/:id/notes ─────────────────────────────
 const addFollowUpNote = async (req, res) => {
-    const id = parseInt(req.params.id);
+    const id = parseInt(getParamString(req.params.id));
     if (isNaN(id)) {
         res.status(400).json({ success: false, message: 'Invalid customer ID' });
         return;
@@ -177,7 +204,8 @@ const addFollowUpNote = async (req, res) => {
             res.status(404).json({ success: false, message: 'Customer not found' });
             return;
         }
-        const [user] = await db_1.default.query('SELECT name FROM users WHERE id = ?', [req.userId]);
+        const userId = (0, auth_1.getUserId)(req);
+        const [user] = await db_1.default.query('SELECT name FROM users WHERE id = ?', [userId]);
         const [result] = await db_1.default.execute('INSERT INTO follow_up_notes (customer_id, note, created_by) VALUES (?, ?, ?)', [id, note, user[0]?.name || 'Unknown']);
         res.status(201).json({ success: true, message: 'Note added', data: { id: result.insertId } });
     }
@@ -188,8 +216,8 @@ const addFollowUpNote = async (req, res) => {
 exports.addFollowUpNote = addFollowUpNote;
 // ── DELETE /customers/:id/notes/:noteId ───────────────────
 const deleteFollowUpNote = async (req, res) => {
-    const id = parseInt(req.params.id);
-    const noteId = parseInt(req.params.noteId);
+    const id = parseInt(getParamString(req.params.id));
+    const noteId = parseInt(getParamString(req.params.noteId));
     if (isNaN(id) || isNaN(noteId)) {
         res.status(400).json({ success: false, message: 'Invalid ID' });
         return;
