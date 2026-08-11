@@ -7,11 +7,14 @@ import { AuthRequest } from '../middleware/auth';
 const validationError = (res: Response, errors: any) =>
   res.status(422).json({ success: false, errors: errors.array().map((e: any) => ({ field: e.path, message: e.msg })) });
 
-const parsePage = (p: any, limit: any) => {
-  const page = Math.max(1, parseInt(p) || 1);
-  const size = Math.min(100, Math.max(1, parseInt(limit) || 20));
+const parsePage = (p: string | string[] | undefined, limit: string | string[] | undefined) => {
+  const page = Math.max(1, parseInt(Array.isArray(p) ? p[0] : p) || 1);
+  const size = Math.min(100, Math.max(1, parseInt(Array.isArray(limit) ? limit[0] : limit) || 20));
   return { page, size, offset: (page - 1) * size };
 };
+
+const getQueryString = (value: string | string[] | undefined): string =>
+  Array.isArray(value) ? value[0] : value || '';
 
 // ── validation rules ─────────────────────────────────────
 export const productValidation = [
@@ -34,9 +37,9 @@ export const stockMovementValidation = [
 export const getProducts = async (req: AuthRequest, res: Response): Promise<void> => {
   try {
     const { page, size, offset } = parsePage(req.query.page, req.query.limit);
-    const search   = (req.query.search   as string || '').trim();
-    const category = (req.query.category as string || '').trim();
-    const lowStock = req.query.low_stock === 'true';
+    const search   = getQueryString(req.query.search).trim();
+    const category = getQueryString(req.query.category).trim();
+    const lowStock = getQueryString(req.query.low_stock) === 'true';
 
     const conditions: string[] = [];
     const params: any[] = [];
@@ -69,8 +72,8 @@ export const getProducts = async (req: AuthRequest, res: Response): Promise<void
 export const getStockMovements = async (req: AuthRequest, res: Response): Promise<void> => {
   try {
     const { page, size, offset } = parsePage(req.query.page, req.query.limit);
-    const productId = req.query.product_id as string;
-    const type      = req.query.type as string;
+    const productId = getQueryString(req.query.product_id);
+    const type      = getQueryString(req.query.type);
 
     const conditions: string[] = [];
     const params: any[] = [];

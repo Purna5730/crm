@@ -3,11 +3,14 @@ import pool from '../config/db';
 import { AuthRequest } from '../middleware/auth';
 
 // ── helpers ──────────────────────────────────────────────
-const parsePage = (p: any, limit: any) => {
-  const page = Math.max(1, parseInt(p) || 1);
-  const size = Math.min(100, Math.max(1, parseInt(limit) || 20));
+const parsePage = (p: string | string[] | undefined, limit: string | string[] | undefined) => {
+  const page = Math.max(1, parseInt(Array.isArray(p) ? p[0] : p) || 1);
+  const size = Math.min(100, Math.max(1, parseInt(Array.isArray(limit) ? limit[0] : limit) || 20));
   return { page, size, offset: (page - 1) * size };
 };
+
+const getQueryString = (value: string | string[] | undefined): string =>
+  Array.isArray(value) ? value[0] : value || '';
 
 const generateChallanNumber = async (conn: any): Promise<string> => {
   const d = new Date();
@@ -24,8 +27,8 @@ const generateChallanNumber = async (conn: any): Promise<string> => {
 export const getChallans = async (req: AuthRequest, res: Response): Promise<void> => {
   try {
     const { page, size, offset } = parsePage(req.query.page, req.query.limit);
-    const search = (req.query.search as string || '').trim();
-    const status = (req.query.status as string || '').trim();
+    const search = getQueryString(req.query.search).trim();
+    const status = getQueryString(req.query.status).trim();
 
     const conditions: string[] = [];
     const params: any[] = [];
