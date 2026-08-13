@@ -12,7 +12,10 @@ const products_1 = __importDefault(require("./routes/products"));
 const challans_1 = __importDefault(require("./routes/challans"));
 dotenv_1.default.config();
 const app = (0, express_1.default)();
-app.use((0, cors_1.default)());
+app.use((0, cors_1.default)({
+    origin: ['http://localhost:3000', /\.vercel\.app$/],
+    credentials: true,
+}));
 app.use(express_1.default.json());
 app.use('/api/auth', auth_1.default);
 app.use('/api/customers', customers_1.default);
